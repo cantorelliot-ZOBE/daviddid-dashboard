@@ -1,16 +1,19 @@
 'use client'
 import DashboardShell from '@/components/DashboardShell'
-import { mockLifts } from '@/lib/mockData'
+import { useBootstrap } from '@/lib/api'
 import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 
 const chartTooltipStyle = { background:'#111410', border:'1px solid rgba(255,255,255,0.06)', borderRadius:10, fontSize:11, fontFamily:'DM Mono', color:'#F0EDE6' }
 
 export default function LiftsPage() {
-  const lifts = Object.keys(mockLifts)
+  const { data } = useBootstrap()
   const [selected, setSelected] = useState('Back Squat')
-  const data = mockLifts[selected as keyof typeof mockLifts]
-  const chartData = data.map(s=>({date:s.date, max:Math.max(...s.sets.map(x=>x.w)), vol:s.sets.reduce((a,x)=>a+(x.w*x.r),0)}))
+  if (!data) return <DashboardShell><div className="px-8 py-6 text-muted text-sm font-mono">Loading…</div></DashboardShell>
+  const mockLifts = data.lifts
+  const lifts = Object.keys(mockLifts)
+  const entries = mockLifts[selected] ?? []
+  const chartData = entries.map(s=>({date:s.date, max:Math.max(...s.sets.map(x=>x.w)), vol:s.sets.reduce((a,x)=>a+(x.w*x.r),0)}))
   const pr = Math.max(...chartData.map(d=>d.max))
   const first = chartData[0].max
   const gain = pr - first
@@ -34,8 +37,8 @@ export default function LiftsPage() {
         <div className="grid grid-cols-4 gap-3 mb-6">
           {[
             {val:`${pr} lbs`, label:'Current PR',        delta:`+${gain}lbs since start`, up:true},
-            {val:`${data.length}`,label:'Sessions logged',delta:'This block',               up:null},
-            {val:`${chartData[chartData.length-1].max} lbs`,label:'Last session top set',delta:data[data.length-1].date, up:null},
+            {val:`${entries.length}`,label:'Sessions logged',delta:'This block',               up:null},
+            {val:`${chartData[chartData.length-1].max} lbs`,label:'Last session top set',delta:entries[entries.length-1].date, up:null},
             {val:`${Math.round(chartData.reduce((a,d)=>a+d.vol,0)/chartData.length).toLocaleString()}`,label:'Avg session volume',delta:'lbs total',up:null},
           ].map(s=>(
             <div key={s.label} className="bg-card border border-white/[0.055] rounded-2xl p-4">
@@ -91,7 +94,7 @@ export default function LiftsPage() {
               </tr>
             </thead>
             <tbody>
-              {[...data].reverse().map((session,i)=>{
+              {[...entries].reverse().map((session,i)=>{
                 const top = Math.max(...session.sets.map(s=>s.w))
                 const vol = session.sets.reduce((a,s)=>a+(s.w*s.r),0)
                 return (

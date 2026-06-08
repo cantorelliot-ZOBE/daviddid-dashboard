@@ -1,6 +1,6 @@
 'use client'
 import DashboardShell from '@/components/DashboardShell'
-import { mockRecovery, mockTraining, mockNutrition, mockAnalytics, mockLifts } from '@/lib/mockData'
+import { useBootstrap } from '@/lib/api'
 import Link from 'next/link'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import { useState } from 'react'
@@ -32,18 +32,21 @@ const chartTooltipStyle = {
 }
 
 export default function HomePage() {
-  const r = mockRecovery
-  const n = mockNutrition
-  const t = mockTraining
-  const a = mockAnalytics
+  const { data } = useBootstrap()
+  const [selectedLift, setSelectedLift] = useState('Back Squat')
+  if (!data) return <DashboardShell><div className="px-8 py-6 text-muted text-sm font-mono">Loading…</div></DashboardShell>
+
+  const r = data.recovery
+  const n = data.nutrition
+  const t = data.training
+  const a = data.analytics
+  const mockLifts = data.lifts
   const circumference = 2*Math.PI*28
   const offset = circumference - (r.score/100)*circumference
 
   const recoveryData = a.recoveryTrend.map((v,i)=>({day:i+1,score:v}))
   const weightData = a.weightTrend.map((v,i)=>({day:i+1,weight:v}))
-  const squat = mockLifts['Back Squat'].map(s=>({date:s.date,max:Math.max(...s.sets.map(x=>x.w))}))
 
-  const [selectedLift, setSelectedLift] = useState('Back Squat')
   const liftData = mockLifts[selectedLift as keyof typeof mockLifts].map(s=>({date:s.date,max:Math.max(...s.sets.map(x=>x.w))}))
 
   return (

@@ -1,12 +1,15 @@
+'use client'
 import DashboardShell from '@/components/DashboardShell'
-import { mockNutrition } from '@/lib/mockData'
+import { useBootstrap } from '@/lib/api'
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="text-muted text-[11px] font-mono tracking-[0.15em] uppercase mb-3">{children}</div>
 }
 
 export default function NutritionPage() {
-  const n = mockNutrition
+  const { data } = useBootstrap()
+  if (!data) return <DashboardShell><div className="text-muted text-sm font-mono">Loading…</div></DashboardShell>
+  const n = data.nutrition
   return (
     <DashboardShell>
       <div className="text-muted text-[11px] font-mono tracking-widest uppercase">Today&apos;s Fuel</div>

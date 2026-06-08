@@ -1,12 +1,15 @@
+'use client'
 import DashboardShell from '@/components/DashboardShell'
-import { mockTraining } from '@/lib/mockData'
+import { useBootstrap } from '@/lib/api'
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="text-muted text-[11px] font-mono tracking-[0.15em] uppercase mb-3">{children}</div>
 }
 
 export default function TrainingPage() {
-  const t = mockTraining
+  const { data } = useBootstrap()
+  if (!data) return <DashboardShell><div className="text-muted text-sm font-mono">Loading…</div></DashboardShell>
+  const t = data.training
   return (
     <DashboardShell>
       <div className="text-muted text-[11px] font-mono tracking-widest uppercase">Train</div>

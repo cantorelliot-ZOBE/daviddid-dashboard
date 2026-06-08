@@ -1,18 +1,21 @@
 'use client'
+'use client'
 import DashboardShell from '@/components/DashboardShell'
-import { mockAnalytics } from '@/lib/mockData'
+import { useBootstrap } from '@/lib/api'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="text-muted text-[11px] font-mono tracking-[0.15em] uppercase mb-3">{children}</div>
 }
 
-const recoveryData = mockAnalytics.recoveryTrend.map((v, i) => ({ day: i + 1, score: v }))
 const weightData = [188,187.5,187,186.5,186,185.5,185,184.5,184,183.5,183,182.5,182,182,181.5,181,181,180.5,180.5,180,180,182,182.5,182,181.5,181,181,180.5,180,182].map((v,i) => ({ day: i+1, weight: v }))
 const strengthData = [185,185,190,190,195,195,200,200,205,205,210,210,215,215,215,220,220,220,225,225].map((v,i) => ({ week: i+1, squat: v }))
 
 export default function AnalyticsPage() {
-  const a = mockAnalytics
+  const { data } = useBootstrap()
+  if (!data) return <DashboardShell><div className="text-muted text-sm font-mono">Loading…</div></DashboardShell>
+  const a = data.analytics
+  const recoveryData = a.recoveryTrend.map((v, i) => ({ day: i + 1, score: v }))
   return (
     <DashboardShell>
       <div className="text-muted text-[11px] font-mono tracking-widest uppercase">Progress</div>
