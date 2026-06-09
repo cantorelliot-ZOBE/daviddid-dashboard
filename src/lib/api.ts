@@ -2,38 +2,44 @@
 import { useEffect, useState } from 'react'
 
 // Browser-reachable API URL. Set via NEXT_PUBLIC_API_URL in docker-compose.
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+export const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
 
 type LiftSet = { w: number; r: number }
 type LiftEntry = { date: string; sets: LiftSet[] }
 
-// Mirrors the GET /api/bootstrap response, which in turn mirrors the shapes
-// the dashboard used to import from mockData.ts.
+// Mirrors the GET /api/bootstrap response. A brand-new (empty) database returns
+// null for the single-row slices and empty collections — every field below that
+// can be absent is typed `| null` so pages render "no data yet" placeholders.
+export type Recovery = {
+  score: number | null; label: string | null; directive: string | null
+  hrv: number | null; hrvDelta: number | null; restingHR: number | null; restingHRDelta: number | null
+  sleep: { total: string | null; quality: string | number | null; efficiency: number | null; spo2: number | null; deep: string | null; rem: string | null; core: string | null; awake: string | null } | null
+  hrvWeek: number[]; hrvMonth: number[]
+}
+export type Training = {
+  weekDone: number | null; weekTotal: number | null; weekKcal: number | null; weekHours: number | null
+  sessions: { id: number; name: string; sub: string; duration: string; day: string; status: string }[]
+}
+export type Nutrition = {
+  calories: { current: number | null; target: number | null }
+  protein: { current: number | null; target: number | null }
+  carbs: { current: number | null; target: number | null }
+  fat: { current: number | null; target: number | null }
+  davidNote: string | null
+  meals: { name: string; time: string; macros: string; kcal: number }[]
+}
+export type Analytics = {
+  avgRecovery: number | null; avgHRV: number | null; sessionsDone: number | null; sessionsTotal: number | null
+  avgSleep: string | null; avgKcal: number | null; avgRestingHR: number | null
+  recoveryTrend: number[]; weightTrend: number[]; strengthTrend: number[]
+}
+
 export type Bootstrap = {
-  user: { name: string; initials: string; email: string }
-  recovery: {
-    score: number; label: string; directive: string
-    hrv: number; hrvDelta: number; restingHR: number; restingHRDelta: number
-    sleep: { total: string; quality: number; efficiency: number; spo2: number; deep: string; rem: string; core: string; awake: string }
-    hrvWeek: number[]; hrvMonth: number[]
-  }
-  training: {
-    weekDone: number; weekTotal: number; weekKcal: number; weekHours: number
-    sessions: { id: number; name: string; sub: string; duration: string; day: string; status: string }[]
-  }
-  nutrition: {
-    calories: { current: number; target: number }
-    protein: { current: number; target: number }
-    carbs: { current: number; target: number }
-    fat: { current: number; target: number }
-    davidNote: string
-    meals: { name: string; time: string; macros: string; kcal: number }[]
-  }
-  analytics: {
-    avgRecovery: number; avgHRV: number; sessionsDone: number; sessionsTotal: number
-    avgSleep: string; avgKcal: number; avgRestingHR: number
-    recoveryTrend: number[]; weightTrend: number[]; strengthTrend: number[]
-  }
+  user: { name: string; initials: string; email: string | null } | null
+  recovery: Recovery | null
+  training: Training | null
+  nutrition: Nutrition | null
+  analytics: Analytics | null
   lifts: Record<string, LiftEntry[]>
   people: { id: number; initials: string; name: string; role: string; permission: string; color: string; status: string }[]
   messages: { role: string; content: string; time: string }[]
@@ -66,4 +72,20 @@ export function useBootstrap() {
   }, [])
 
   return { data, error }
+}
+
+// Server-side David chat. The Anthropic key lives only on the API; the browser
+// never talks to Anthropic directly. Returns David's reply text.
+export async function sendChat(
+  messages: { role: 'user' | 'assistant'; content: string }[],
+  system?: string,
+): Promise<string> {
+  const res = await fetch(`${API}/api/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages, system }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data?.error || `Chat API error (${res.status})`)
+  return data.text || ''
 }

@@ -15,7 +15,7 @@ const permStyles: Record<string, string> = {
 export default function PeoplePage() {
   const { data } = useBootstrap()
   if (!data) return <DashboardShell><div className="text-muted text-sm font-mono">Loading…</div></DashboardShell>
-  const mockPeople = data.people
+  const people = data.people
   return (
     <DashboardShell>
       <div className="text-muted text-[11px] font-mono tracking-widest uppercase">People</div>
@@ -23,7 +23,10 @@ export default function PeoplePage() {
 
       <SectionLabel>Who can see your data</SectionLabel>
       <div className="flex flex-col gap-2 mb-5">
-        {mockPeople.map(p => (
+        {people.length === 0 && (
+          <div className="text-muted text-[13px] mb-1">No one added yet — invite a coach or training partner to share your dashboard.</div>
+        )}
+        {people.map(p => (
           <div key={p.id} className={`bg-card border border-white/[0.06] rounded-card flex items-center gap-3 px-4 py-3.5 ${p.status==='pending'?'opacity-50':''}`}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-bold shrink-0 border"
               style={{ background: `${p.color}18`, borderColor: `${p.color}30`, color: p.color }}>

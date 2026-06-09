@@ -1,20 +1,36 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
-import { mockRecovery, mockNutrition } from '@/lib/mockData'
+import { useBootstrap, sendChat } from '@/lib/api'
 
 type Message = { role:'user'|'assistant'; content:string; time:string }
 
-const SYSTEM = `You are David, a direct no-nonsense AI performance coach inside the DavidDid web dashboard. Current data: Recovery ${mockRecovery.score}/100, HRV ${mockRecovery.hrv}ms (+${mockRecovery.hrvDelta}ms), Sleep ${mockRecovery.sleep.total} (${mockRecovery.sleep.efficiency}% efficiency), Resting HR ${mockRecovery.restingHR}bpm. Macros: ${mockNutrition.calories.current}/${mockNutrition.calories.target}kcal, ${mockNutrition.protein.current}/${mockNutrition.protein.target}g protein. Strength: Back squat 225lbs (+40lbs this block), Bench 185lbs, Deadlift 315lbs. Body weight: 182lbs, down 6lbs over 4 weeks. Be sharp, direct, data-informed. No filler. No cheerleading.`
-
-const INIT:Message[] = [
-  { role:'assistant', content:"Recovery at 87, HRV up 4ms. Push session is the right call today — don't swap it.", time:'8:02' },
-]
-
 function now(){ const d=new Date(); return d.getHours()+':'+String(d.getMinutes()).padStart(2,'0') }
 
+// Build David's system prompt from the user's real data. Anything still missing
+// (a brand-new account) is simply omitted — never replaced with fabricated stats.
+function buildSystem(data: ReturnType<typeof useBootstrap>['data']): string {
+  const base = 'You are David, a direct no-nonsense AI performance coach inside the DavidDid web dashboard. Be sharp, direct, data-informed. No filler. No cheerleading.'
+  if (!data) return base
+  const facts: string[] = []
+  const r = data.recovery
+  if (r) {
+    if (r.score != null) facts.push(`Recovery ${r.score}/100`)
+    if (r.hrv != null) facts.push(`HRV ${r.hrv}ms`)
+    if (r.sleep?.total) facts.push(`Sleep ${r.sleep.total}`)
+    if (r.restingHR != null) facts.push(`Resting HR ${r.restingHR}bpm`)
+  }
+  const n = data.nutrition
+  if (n?.calories?.current != null && n.calories.target != null) {
+    facts.push(`Calories ${n.calories.current}/${n.calories.target}kcal`)
+  }
+  if (!facts.length) return `${base} The user just signed up — no recovery, nutrition, or training data has synced yet, so don't invent numbers.`
+  return `${base} Current data: ${facts.join(', ')}.`
+}
+
 export default function DavidChat() {
+  const { data } = useBootstrap()
   const [open, setOpen] = useState(false)
-  const [messages, setMessages] = useState<Message[]>(INIT)
+  const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -30,13 +46,8 @@ export default function DavidChat() {
     setLoading(true)
     const history = [...messages,userMsg].map(m=>({role:m.role,content:m.content}))
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages',{
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYSTEM,messages:history}),
-      })
-      const data = await res.json()
-      const reply = data.content?.find((b:{type:string})=>b.type==='text')?.text??'No response.'
-      setMessages(prev=>[...prev,{role:'assistant',content:reply,time:now()}])
+      const reply = await sendChat(history, buildSystem(data))
+      setMessages(prev=>[...prev,{role:'assistant',content:reply||'No response.',time:now()}])
     } catch {
       setMessages(prev=>[...prev,{role:'assistant',content:'Connection issue.',time:now()}])
     }
@@ -75,6 +86,11 @@ export default function DavidChat() {
           </div>
 
           <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
+            {messages.length === 0 && !loading && (
+              <div className="text-muted text-[12px] leading-relaxed mt-2">
+                Ask David anything about your training, recovery, or nutrition.
+              </div>
+            )}
             {messages.map((m,i)=>(
               <div key={i} className={`flex flex-col ${m.role==='user'?'items-end':'items-start'}`}>
                 {m.role==='assistant' && <div className="text-lime text-[10px] font-mono tracking-widest uppercase mb-1">David</div>}

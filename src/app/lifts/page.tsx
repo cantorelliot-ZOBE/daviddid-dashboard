@@ -1,5 +1,6 @@
 'use client'
 import DashboardShell from '@/components/DashboardShell'
+import Empty from '@/components/Empty'
 import { useBootstrap } from '@/lib/api'
 import { useState } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
@@ -8,15 +9,32 @@ const chartTooltipStyle = { background:'#111410', border:'1px solid rgba(255,255
 
 export default function LiftsPage() {
   const { data } = useBootstrap()
-  const [selected, setSelected] = useState('Back Squat')
+  const [selected, setSelected] = useState<string | null>(null)
   if (!data) return <DashboardShell><div className="px-8 py-6 text-muted text-sm font-mono">Loading…</div></DashboardShell>
-  const mockLifts = data.lifts
-  const lifts = Object.keys(mockLifts)
-  const entries = mockLifts[selected] ?? []
+
+  const liftsData = data.lifts
+  const lifts = Object.keys(liftsData)
+
+  if (lifts.length === 0) {
+    return (
+      <DashboardShell>
+        <div className="px-8 py-6 max-w-[1400px] mx-auto">
+          <div className="text-muted text-[11px] font-mono tracking-widest uppercase">Lifts</div>
+          <div className="text-bone text-[26px] font-bold mb-5">Lift history</div>
+          <Empty label="No lifts logged yet — log a workout in the app to start tracking progression." />
+        </div>
+      </DashboardShell>
+    )
+  }
+
+  const active = selected && lifts.includes(selected) ? selected : lifts[0]
+  const entries = liftsData[active] ?? []
   const chartData = entries.map(s=>({date:s.date, max:Math.max(...s.sets.map(x=>x.w)), vol:s.sets.reduce((a,x)=>a+(x.w*x.r),0)}))
-  const pr = Math.max(...chartData.map(d=>d.max))
-  const first = chartData[0].max
+  const pr = chartData.length ? Math.max(...chartData.map(d=>d.max)) : 0
+  const first = chartData.length ? chartData[0].max : 0
   const gain = pr - first
+  const lastMax = chartData.length ? chartData[chartData.length-1].max : 0
+  const avgVol = chartData.length ? Math.round(chartData.reduce((a,d)=>a+d.vol,0)/chartData.length) : 0
 
   return (
     <DashboardShell>
@@ -28,7 +46,7 @@ export default function LiftsPage() {
         <div className="flex gap-2 mb-6">
           {lifts.map(l=>(
             <button key={l} onClick={()=>setSelected(l)}
-              className={`px-4 py-2 rounded-xl text-[13px] font-medium border transition-colors ${selected===l?'bg-lime/10 text-lime border-lime/20':'bg-card border-white/[0.055] text-muted hover:text-bone'}`}>
+              className={`px-4 py-2 rounded-xl text-[13px] font-medium border transition-colors ${active===l?'bg-lime/10 text-lime border-lime/20':'bg-card border-white/[0.055] text-muted hover:text-bone'}`}>
               {l}
             </button>
           ))}
@@ -38,8 +56,8 @@ export default function LiftsPage() {
           {[
             {val:`${pr} lbs`, label:'Current PR',        delta:`+${gain}lbs since start`, up:true},
             {val:`${entries.length}`,label:'Sessions logged',delta:'This block',               up:null},
-            {val:`${chartData[chartData.length-1].max} lbs`,label:'Last session top set',delta:entries[entries.length-1].date, up:null},
-            {val:`${Math.round(chartData.reduce((a,d)=>a+d.vol,0)/chartData.length).toLocaleString()}`,label:'Avg session volume',delta:'lbs total',up:null},
+            {val:`${lastMax} lbs`,label:'Last session top set',delta:entries[entries.length-1]?.date ?? '—', up:null},
+            {val:`${avgVol.toLocaleString()}`,label:'Avg session volume',delta:'lbs total',up:null},
           ].map(s=>(
             <div key={s.label} className="bg-card border border-white/[0.055] rounded-2xl p-4">
               <div className="text-bone text-[26px] font-bold leading-none">{s.val}</div>
