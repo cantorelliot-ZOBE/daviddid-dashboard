@@ -11,6 +11,12 @@ function now(){ const d=new Date(); return d.getHours()+':'+String(d.getMinutes(
 function buildSystem(data: ReturnType<typeof useBootstrap>['data']): string {
   const base = 'You are David, a direct no-nonsense AI performance coach inside the DavidDid web dashboard. Be sharp, direct, data-informed. No filler. No cheerleading.'
   if (!data) return base
+  const profile: string[] = []
+  if (data.user?.name) profile.push(`You're coaching ${data.user.name}.`)
+  const goals = data.user?.goals
+  const goalText = Array.isArray(goals) ? goals.join(', ') : goals
+  if (goalText) profile.push(`Their goals: ${goalText}.`)
+  const intro = profile.length ? ` ${profile.join(' ')}` : ''
   const facts: string[] = []
   const r = data.recovery
   if (r) {
@@ -23,8 +29,8 @@ function buildSystem(data: ReturnType<typeof useBootstrap>['data']): string {
   if (n?.calories?.current != null && n.calories.target != null) {
     facts.push(`Calories ${n.calories.current}/${n.calories.target}kcal`)
   }
-  if (!facts.length) return `${base} The user just signed up — no recovery, nutrition, or training data has synced yet, so don't invent numbers.`
-  return `${base} Current data: ${facts.join(', ')}.`
+  if (!facts.length) return `${base}${intro} The user just signed up — no recovery, nutrition, or training data has synced yet, so don't invent numbers.`
+  return `${base}${intro} Current data: ${facts.join(', ')}.`
 }
 
 export default function DavidChat() {

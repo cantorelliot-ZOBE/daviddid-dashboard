@@ -35,7 +35,7 @@ export type Analytics = {
 }
 
 export type Bootstrap = {
-  user: { name: string; initials: string; email: string | null } | null
+  user: { name: string; initials: string; email: string | null; goals?: string[] | string | null } | null
   recovery: Recovery | null
   training: Training | null
   nutrition: Nutrition | null
