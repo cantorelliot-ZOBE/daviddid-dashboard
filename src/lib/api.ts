@@ -1,8 +1,18 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { authHeader, clearToken } from './auth'
 
-// Browser-reachable API URL. Set via NEXT_PUBLIC_API_URL in docker-compose.
-export const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'
+// Browser-reachable API URL. Override via NEXT_PUBLIC_API_URL; defaults to the
+// deployed API so the dashboard works without extra config.
+export const API = process.env.NEXT_PUBLIC_API_URL || 'https://daviddid-api-production.up.railway.app'
+
+// Every endpoint below /api/auth now requires a valid token. On a 401 (missing,
+// expired, or revoked token) we drop the token and reload — AuthGate then finds
+// no token and renders the login page instead of the dashboard.
+function onUnauthorized() {
+  clearToken()
+  if (typeof window !== 'undefined') window.location.reload()
+}
 
 type LiftSet = { w: number; r: number }
 type LiftEntry = { date: string; sets: LiftSet[] }
@@ -49,7 +59,8 @@ export type Bootstrap = {
 let cache: Promise<Bootstrap> | null = null
 function loadBootstrap(): Promise<Bootstrap> {
   if (!cache) {
-    cache = fetch(`${API}/api/bootstrap`).then((r) => {
+    cache = fetch(`${API}/api/bootstrap`, { headers: { ...authHeader() } }).then((r) => {
+      if (r.status === 401) { onUnauthorized(); throw new Error('Unauthorized') }
       if (!r.ok) throw new Error(`API ${r.status}`)
       return r.json()
     })
@@ -82,9 +93,10 @@ export async function sendChat(
 ): Promise<string> {
   const res = await fetch(`${API}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader() },
     body: JSON.stringify({ messages, system }),
   })
+  if (res.status === 401) { onUnauthorized(); throw new Error('Unauthorized') }
   const data = await res.json()
   if (!res.ok) throw new Error(data?.error || `Chat API error (${res.status})`)
   return data.text || ''
